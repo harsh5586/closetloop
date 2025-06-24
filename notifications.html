@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notifications - ClosetLoop</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  
+  <!-- Your Firebase config -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/notifications.js"></script>
+  
+  <!-- Toast notification library -->
+  <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+</head>
+<body class="bg-gray-50 font-sans">
+  <!-- Top Navigation -->
+  <nav class="bg-white shadow-md fixed w-full top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="flex justify-between h-16">
+        <div class="flex items-center">
+          <a href="index.html" class="text-2xl font-bold text-purple-600">ClosetLoop</a>
+        </div>
+        <div class="hidden md:flex items-center space-x-8">
+          <a href="dashboard.html" class="text-gray-600 hover:text-purple-600">Dashboard</a>
+          <a href="profile.html" class="text-gray-600 hover:text-purple-600">Profile</a>
+          <a href="chat.html" class="text-gray-600 hover:text-purple-600">Messages</a>
+          <button id="logoutBtn" class="text-gray-600 hover:text-purple-600">Logout</button>
+        </div>
+        <div class="md:hidden flex items-center">
+          <button id="mobileMenuBtn" class="text-gray-600">
+            <i class="fas fa-bars text-xl"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- Mobile Menu -->
+    <div id="mobileMenu" class="hidden md:hidden bg-white border-t">
+      <div class="px-2 pt-2 pb-3 space-y-1">
+        <a href="dashboard.html" class="block px-3 py-2 text-gray-600 hover:bg-purple-50">Dashboard</a>
+        <a href="profile.html" class="block px-3 py-2 text-gray-600 hover:bg-purple-50">Profile</a>
+        <a href="chat.html" class="block px-3 py-2 text-gray-600 hover:bg-purple-50">Messages</a>
+        <button id="mobileLogoutBtn" class="w-full text-left px-3 py-2 text-gray-600 hover:bg-purple-50">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="pt-20 pb-12 px-4">
+    <div class="max-w-4xl mx-auto">
+      <!-- Guest Message -->
+      <div id="guestMessage" class="bg-white rounded-xl shadow-lg p-8 text-center hidden">
+        <div class="bg-purple-50 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
+          <i class="fas fa-bell text-purple-500 text-4xl"></i>
+        </div>
+        <h3 class="text-2xl font-bold text-gray-800 mb-2">Sign in to view notifications</h3>
+        <p class="text-gray-600 mb-6">You need to be logged in to see your notifications and stay updated with your requests and messages.</p>
+        <div class="flex gap-4 justify-center">
+          <a href="login.html" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition">
+            <i class="fas fa-sign-in-alt mr-2"></i>Log In
+          </a>
+          <a href="signup.html" class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition">
+            <i class="fas fa-user-plus mr-2"></i>Sign Up
+          </a>
+        </div>
+      </div>
+
+      <!-- Authenticated User Content -->
+      <div id="authenticatedContent" class="hidden">
+        <!-- Header -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+          <div class="flex justify-between items-center">
+            <div>
+              <h1 class="text-2xl font-bold text-gray-800">Notifications</h1>
+              <p class="text-gray-600 mt-1">Stay updated with your latest activities</p>
+            </div>
+            <div class="flex gap-3">
+              <button id="markAllReadBtn" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">
+                <i class="fas fa-check-double mr-2"></i>Mark All Read
+              </button>
+              <button id="refreshBtn" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
+                <i class="fas fa-sync-alt mr-2"></i>Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="bg-white rounded-xl shadow-lg p-4 mb-6">
+          <div class="flex gap-2 justify-center">
+            <button id="allTab" class="filter-tab px-4 py-2 rounded-full bg-purple-100 text-purple-800">All</button>
+            <button id="unreadTab" class="filter-tab px-4 py-2 rounded-full bg-gray-100 text-gray-800">Unread</button>
+            <button id="requestsTab" class="filter-tab px-4 py-2 rounded-full bg-gray-100 text-gray-800">Requests</button>
+            <button id="messagesTab" class="filter-tab px-4 py-2 rounded-full bg-gray-100 text-gray-800">Messages</button>
+            <button id="systemTab" class="filter-tab px-4 py-2 rounded-full bg-gray-100 text-gray-800">System</button>
+          </div>
+        </div>
+
+        <!-- Notifications Container -->
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+          <div id="notificationsContainer" class="divide-y divide-gray-100">
+            <!-- Loading state -->
+            <div class="p-8 text-center">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+              <p class="text-gray-500">Loading notifications...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden bg-white rounded-xl shadow-lg p-8 text-center">
+          <div class="bg-purple-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-bell-slash text-3xl text-purple-600"></i>
+          </div>
+          <h3 class="text-xl font-semibold text-gray-800 mb-2">No notifications yet</h3>
+          <p class="text-gray-600 mb-6">You'll see notifications here when you have new requests, messages, or updates.</p>
+          <a href="index.html" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition">
+            <i class="fas fa-search mr-2"></i>Browse Items
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // DOM Elements
+    const notificationsContainer = document.getElementById('notificationsContainer');
+    const emptyState = document.getElementById('emptyState');
+    const markAllReadBtn = document.getElementById('markAllReadBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const filterTabs = document.querySelectorAll('.filter-tab');
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const mobileMenu = document.getElementById('mobileMenu');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const mobileLogoutBtn = document.getElementById('mobileLogoutBtn');
+
+    let currentFilter = 'all';
+    let allNotifications = [];
+
+    // Initialize
+    firebase.auth().onAuthStateChanged(user => {
+      if (!user) {
+        document.getElementById('authenticatedContent').classList.add('hidden');
+        document.getElementById('guestMessage').classList.remove('hidden');
+        return;
+      }
+      
+      // User is authenticated
+      document.getElementById('guestMessage').classList.add('hidden');
+      document.getElementById('authenticatedContent').classList.remove('hidden');
+      
+      // Initialize notification system
+      if (window.notificationSystem) {
+        window.notificationSystem.setupNotificationListener();
+      }
+      
+      // Load notifications for this page
+      loadNotifications();
+    });
+
+    // Load notifications function
+    async function loadNotifications() {
+      const user = firebase.auth().currentUser;
+      if (!user) return;
+
+      try {
+        const snapshot = await firebase.firestore().collection('notifications')
+          .where('userId', '==', user.uid)
+          .limit(50)
+          .get();
+
+        const notifications = [];
+        snapshot.forEach(doc => {
+          notifications.push({ id: doc.id, ...doc.data() });
+        });
+
+        // Sort by timestamp (client-side)
+        notifications.sort((a, b) => {
+          const timeA = a.timestamp?.toDate?.() || new Date(0);
+          const timeB = b.timestamp?.toDate?.() || new Date(0);
+          return timeB - timeA; // Most recent first
+        });
+
+        allNotifications = notifications;
+        filterNotifications(currentFilter);
+      } catch (error) {
+        console.error('Error loading notifications:', error);
+        if (error.code === 'failed-precondition') {
+          console.warn('⚠️ Firestore index required. Please create the index or contact support.');
+        }
+      }
+    }
+
+    // Filter tabs
+    filterTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const filter = tab.id.replace('Tab', '');
+        setActiveFilter(filter);
+        filterNotifications(filter);
+      });
+    });
+
+    function setActiveFilter(filter) {
+      currentFilter = filter;
+      filterTabs.forEach(tab => {
+        const tabFilter = tab.id.replace('Tab', '');
+        if (tabFilter === filter) {
+          tab.classList.remove('bg-gray-100', 'text-gray-800');
+          tab.classList.add('bg-purple-100', 'text-purple-800');
+        } else {
+          tab.classList.remove('bg-purple-100', 'text-purple-800');
+          tab.classList.add('bg-gray-100', 'text-gray-800');
+        }
+      });
+    }
+
+    function filterNotifications(filter) {
+      let filteredNotifications = allNotifications;
+
+      switch (filter) {
+        case 'unread':
+          filteredNotifications = allNotifications.filter(n => !n.read);
+          break;
+        case 'requests':
+          filteredNotifications = allNotifications.filter(n => n.type === 'request');
+          break;
+        case 'messages':
+          filteredNotifications = allNotifications.filter(n => n.type === 'message');
+          break;
+        case 'system':
+          filteredNotifications = allNotifications.filter(n => n.type === 'system');
+          break;
+      }
+
+      displayNotifications(filteredNotifications);
+    }
+
+    function displayNotifications(notifications) {
+      if (notifications.length === 0) {
+        notificationsContainer.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      notificationsContainer.classList.remove('hidden');
+      emptyState.classList.add('hidden');
+      notificationsContainer.innerHTML = '';
+
+      notifications.forEach(notification => {
+        const notificationEl = createNotificationElement(notification);
+        notificationsContainer.appendChild(notificationEl);
+      });
+    }
+
+    function createNotificationElement(notification) {
+      const div = document.createElement('div');
+      div.className = `notification-item p-4 hover:bg-gray-50 transition ${!notification.read ? 'bg-blue-50' : ''}`;
+      
+      const icon = getNotificationIcon(notification.type);
+      const timeAgo = getTimeAgo(notification.timestamp?.toDate());
+      
+      div.innerHTML = `
+        <div class="flex items-start gap-3">
+          <div class="flex-shrink-0">
+            <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+              <i class="${icon} text-purple-600"></i>
+            </div>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex justify-between items-start">
+              <div>
+                <h4 class="font-semibold text-gray-900">${notification.title}</h4>
+                <p class="text-sm text-gray-600 mt-1">${notification.message}</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-400">${timeAgo}</span>
+                ${!notification.read ? '<span class="w-2 h-2 bg-blue-500 rounded-full"></span>' : ''}
+              </div>
+            </div>
+            ${getNotificationActions(notification)}
+          </div>
+        </div>
+      `;
+
+      // Add click handler to mark as read
+      div.addEventListener('click', () => {
+        markAsRead(notification.id);
+      });
+
+      return div;
+    }
+
+    function getNotificationIcon(type) {
+      const icons = {
+        'request': 'fas fa-handshake',
+        'message': 'fas fa-comment',
+        'payment': 'fas fa-credit-card',
+        'system': 'fas fa-info-circle',
+        'status_change': 'fas fa-check-circle',
+        'item_update': 'fas fa-tshirt'
+      };
+      return icons[type] || 'fas fa-bell';
+    }
+
+    function getTimeAgo(date) {
+      if (!date) return 'Just now';
+      
+      const now = new Date();
+      const diff = now - date;
+      const minutes = Math.floor(diff / 60000);
+      const hours = Math.floor(diff / 3600000);
+      const days = Math.floor(diff / 86400000);
+
+      if (minutes < 1) return 'Just now';
+      if (minutes < 60) return `${minutes}m ago`;
+      if (hours < 24) return `${hours}h ago`;
+      if (days < 7) return `${days}d ago`;
+      
+      return date.toLocaleDateString();
+    }
+
+    function getNotificationActions(notification) {
+      if (notification.type === 'request' && notification.data.requestId) {
+        return `
+          <div class="flex gap-2 mt-3">
+            <button onclick="viewRequest('${notification.data.requestId}', '${notification.data.requestType}')" 
+                    class="text-sm bg-purple-600 text-white px-3 py-1 rounded hover:bg-purple-700 transition">
+              View Request
+            </button>
+          </div>
+        `;
+      }
+      
+      if (notification.type === 'message' && notification.data.chatId) {
+        return `
+          <div class="flex gap-2 mt-3">
+            <button onclick="openChat('${notification.data.chatId}')" 
+                    class="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition">
+              Open Chat
+            </button>
+          </div>
+        `;
+      }
+
+      return '';
+    }
+
+    async function markAsRead(notificationId) {
+      try {
+        await firebase.firestore().collection('notifications').doc(notificationId).update({
+          read: true
+        });
+        showToast('Notification marked as read', 'success');
+      } catch (error) {
+        console.error('Error marking notification as read:', error);
+        showToast('Failed to mark notification as read', 'error');
+      }
+    }
+
+    async function markAllAsRead() {
+      try {
+        const batch = firebase.firestore().batch();
+        const unreadNotifications = await firebase.firestore().collection('notifications')
+          .where('userId', '==', firebase.auth().currentUser.uid)
+          .where('read', '==', false)
+          .get();
+
+        unreadNotifications.forEach(doc => {
+          batch.update(doc.ref, { read: true });
+        });
+
+        await batch.commit();
+        showToast('All notifications marked as read', 'success');
+      } catch (error) {
+        console.error('Error marking all notifications as read:', error);
+        showToast('Failed to mark all notifications as read', 'error');
+      }
+    }
+
+    function viewRequest(requestId, requestType) {
+      window.location.href = `profile.html?requestId=${requestId}&requestType=${requestType}`;
+    }
+
+    function openChat(chatId) {
+      window.location.href = `chat.html?chatId=${chatId}`;
+    }
+
+    function refreshNotifications() {
+      location.reload();
+    }
+
+    // Event listeners
+    markAllReadBtn.addEventListener('click', markAllAsRead);
+    refreshBtn.addEventListener('click', refreshNotifications);
+
+    // Mobile menu toggle
+    mobileMenuBtn.addEventListener('click', () => {
+      mobileMenu.classList.toggle('hidden');
+    });
+
+    // Logout functionality
+    function handleLogout() {
+      firebase.auth().signOut()
+        .then(() => window.location.href = 'login.html')
+        .catch(error => showToast('Failed to logout', 'error'));
+    }
+
+    logoutBtn.addEventListener('click', handleLogout);
+    mobileLogoutBtn.addEventListener('click', handleLogout);
+
+    // Toast notification function
+    function showToast(message, type = 'success') {
+      Toastify({
+        text: message,
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        backgroundColor: type === 'success' ? "#10B981" : 
+                       type === 'error' ? "#EF4444" :
+                       type === 'info' ? "#3B82F6" : "#6B7280",
+      }).showToast();
+    }
+  </script>
+</body>
+</html> 

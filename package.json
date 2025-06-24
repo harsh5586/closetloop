@@ -1,0 +1,25 @@
+{
+  "name": "closetloop",
+  "version": "1.0.0",
+  "description": "ClosetLoop is a modern web platform that allows users to rent and buy fashion items from other users, promoting sustainable fashion and community-driven clothing sharing.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/harsh5586/closetloop-1.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/harsh5586/closetloop-1/issues"
+  },
+  "homepage": "https://github.com/harsh5586/closetloop-1#readme",
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.5",
+    "tailwindcss": "^4.1.10"
+  }
+}

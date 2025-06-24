@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Item Details - ClosetLoop</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  
+  <style>
+    :root {
+      --primary: #7c3aed;
+      --primary-light: #a78bfa;
+      --primary-dark: #6d28d9;
+      --accent: #f59e0b;
+    }
+    
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--primary-light) #f1f5f9;
+    }
+    
+    *::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    *::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    
+    *::-webkit-scrollbar-thumb {
+      background-color: var(--primary-light);
+      border-radius: 10px;
+    }
+    
+    body {
+      font-family: 'Poppins', sans-serif;
+      background-color: #f8fafc;
+      color: #334155;
+    }
+    
+    .main-image {
+      aspect-ratio: 3/4;
+      object-fit: contain; /* Ensures the entire image is visible without cropping */
+      width: 100%;
+      height: 100%;
+    }
+    
+    .thumbnail {
+      aspect-ratio: 1/1;
+      transition: all 0.2s ease;
+    }
+    
+    .thumbnail:hover, .thumbnail.active {
+      border-color: var(--primary);
+      transform: scale(1.05);
+    }
+    
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 9999px;
+      font-weight: 500;
+      background-color: #f1f5f9;
+    }
+    
+    .detail-card {
+      transition: all 0.3s ease;
+      border-radius: 1rem;
+      overflow: hidden;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+    }
+    
+    .detail-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    
+    .icon-circle {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: rgba(124, 58, 237, 0.1);
+      color: var(--primary);
+      transition: all 0.2s ease;
+    }
+    
+    .icon-circle:hover {
+        background-color: rgba(124, 58, 237, 0.2);
+    }
+
+    .icon-circle.active {
+        background-color: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+    
+    .price-tag {
+      position: relative;
+      padding: 0.5rem 1.5rem 0.5rem 1rem;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      background-color: rgba(124, 58, 237, 0.1);
+    }
+    
+    .action-button {
+      transition: all 0.3s ease;
+      border-radius: 0.75rem;
+      padding: 1rem;
+      font-weight: 600;
+      text-align: center;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    .action-button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .owner-card {
+      transition: all 0.3s ease;
+      border-radius: 1rem;
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    
+    .owner-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .fade-in {
+      animation: fadeIn 0.5s ease-in-out;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+    }
+    
+    @media (max-width: 768px) {
+      .gallery-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+    .hidden {
+        display: none;
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  
+  <!-- Loading Spinner -->
+  <div id="loadingState" class="fixed inset-0 bg-white/90 z-[100] flex items-center justify-center">
+    <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-purple-600"></div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="bg-white shadow-sm py-4 px-6 fixed w-full z-50 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto flex justify-between items-center">
+      <a href="index.html" class="text-2xl font-bold text-purple-600">ClosetLoop</a>
+      <div class="flex gap-6 items-center">
+        <a href="index.html#browse" class="hover:text-purple-600 transition">Browse</a>
+        <a href="index.html#how-it-works" class="hover:text-purple-600 transition">How it Works</a>
+        
+        <!-- Guest Menu -->
+        <div class="guest-menu items-center gap-4">
+            <a href="login.html" class="hover:text-purple-600 transition">Log In</a>
+            <a href="signup.html" class="action-button bg-purple-600 text-white !py-2 !px-4 !rounded-md">Sign Up</a>
+        </div>
+        <!-- User Menu -->
+        <div class="user-menu hidden items-center gap-4">
+          <a href="dashboard.html" class="hover:text-purple-600 transition">Dashboard</a>
+          <div class="relative group">
+            <button class="flex items-center gap-2">
+              <img src="" alt="Profile" class="user-avatar w-8 h-8 rounded-full object-cover border-2 border-purple-100">
+            </button>
+            <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 hidden group-hover:block">
+                <a href="dashboard.html" class="block px-4 py-2 hover:bg-gray-100">Dashboard</a>
+                <a href="profile.html" class="block px-4 py-2 hover:bg-gray-100">Profile Settings</a>
+                <a href="#" class="block px-4 py-2 hover:bg-gray-100" onclick="signOut()">Sign Out</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Item Details Section -->
+  <main class="pt-24 pb-16 px-4 sm:px-6">
+    <div id="item-content" class="max-w-7xl mx-auto hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 xl:gap-12">
+        
+        <!-- Image Gallery -->
+        <div class="fade-in">
+          <div class="bg-white rounded-2xl shadow-sm p-4 mb-4">
+            <img id="mainImage" src="" alt="Main product image" class="main-image w-full h-full object-cover rounded-xl">
+          </div>
+          
+          <div id="imageGallery" class="gallery-grid">
+            <!-- Thumbnails populated by JS -->
+          </div>
+        </div>
+
+        <!-- Item Information -->
+        <div class="space-y-6 fade-in">
+          <div>
+            <div class="flex justify-between items-start mb-4">
+              <h1 id="itemTitle" class="text-3xl lg:text-4xl font-bold text-gray-900"></h1>
+              <button id="wishlistButton" class="icon-circle">
+                <i class="far fa-heart text-lg"></i>
+              </button>
+            </div>
+            
+            <div id="badge-container" class="flex flex-wrap gap-2 mb-6">
+                <!-- Badges populated by JS -->
+            </div>
+            
+            <p id="itemDescription" class="text-gray-600 mb-8 leading-relaxed"></p>
+            
+            <!-- Pricing Information -->
+            <div id="pricing-container" class="flex flex-wrap gap-6 mb-8">
+              <!-- Pricing populated by JS -->
+            </div>
+            
+            <!-- Action Buttons -->
+            <div id="action-buttons-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <!-- Buttons populated by JS -->
+            </div>
+          </div>
+          
+          <!-- Item Details -->
+          <div id="details-card" class="detail-card bg-white p-6">
+            <h2 class="text-xl font-bold mb-4 text-gray-900">Item Details</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Details populated by JS -->
+            </div>
+          </div>
+          
+          <!-- Owner Information -->
+          <div id="owner-card" class="owner-card bg-white p-6">
+            <h2 class="text-xl font-bold mb-4 text-gray-900">Listed by</h2>
+            
+            <div class="flex items-center gap-4 mb-6">
+              <img id="ownerAvatar" src="" alt="Owner" class="w-16 h-16 rounded-full object-cover border-2 border-purple-100">
+              <div>
+                <a id="ownerLink" href=""><p id="ownerName" class="font-bold text-lg"></p></a>
+                <div id="owner-rating" class="flex items-center gap-2 mt-1">
+                  <!-- Rating populated by JS -->
+                </div>
+              </div>
+            </div>
+            
+            <div id="owner-badges" class="flex flex-wrap gap-2">
+              <!-- Owner badges populated by JS -->
+            </div>
+            
+            <div class="mt-4">
+              <button id="messageOwnerBtn" class="w-full py-3 bg-purple-50 text-purple-600 font-medium rounded-lg hover:bg-purple-100 transition">
+                <i class="fas fa-comment-dots mr-2"></i> Message Owner
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Related Items -->
+      <div id="related-items-container" class="mt-16 fade-in">
+        <h2 class="text-2xl font-bold mb-6">Similar Items</h2>
+        <div id="related-items-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <!-- Related items populated by JS -->
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Rental Request Modal -->
+  <div id="rentalModal" class="fixed inset-0 bg-black bg-opacity-50 z-[200] hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-gray-900">Request Rental</h2>
+          <button id="closeRentalModal" class="text-gray-400 hover:text-gray-600">
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+        
+        <div class="space-y-6">
+          <!-- Item Info -->
+          <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+            <img id="modalItemImage" src="" alt="Item" class="w-16 h-16 object-cover rounded-lg">
+            <div>
+              <h3 id="modalItemTitle" class="font-bold text-lg"></h3>
+              <p id="modalItemPrice" class="text-purple-600 font-semibold"></p>
+            </div>
+          </div>
+          
+          <!-- Date Selection -->
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+              <input type="date" id="rentalStartDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+              <input type="date" id="rentalEndDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+            </div>
+          </div>
+          
+          <!-- Total Calculation -->
+          <div class="p-4 bg-purple-50 rounded-lg">
+            <div class="flex justify-between items-center">
+              <span class="text-gray-600">Total Days:</span>
+              <span id="totalDays" class="font-semibold">0</span>
+            </div>
+            <div class="flex justify-between items-center mt-2">
+              <span class="text-gray-600">Total Amount:</span>
+              <span id="totalAmount" class="text-xl font-bold text-purple-600">$0.00</span>
+            </div>
+          </div>
+          
+          <!-- Message to Owner -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Message to Owner (Optional)</label>
+            <textarea id="rentalMessage" rows="3" placeholder="Tell the owner why you'd like to rent this item..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"></textarea>
+          </div>
+          
+          <!-- Action Buttons -->
+          <div class="flex gap-3">
+            <button id="submitRentalRequest" class="flex-1 bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition font-semibold">
+              <i class="fas fa-paper-plane mr-2"></i>Send Request
+            </button>
+            <button id="cancelRentalRequest" class="px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+              Cancel
+            </button>
+            <button id="deleteRentalRequest" class="px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition hidden">
+              <i class="fas fa-trash mr-2"></i>Cancel Request
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-white py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div>
+          <h3 class="text-2xl font-bold mb-4">ClosetLoop</h3>
+          <p class="text-gray-400 mb-4">Sustainable fashion sharing for everyone.</p>
+          <div class="flex gap-4">
+            <a href="#" class="text-gray-400 hover:text-white"><i class="fab fa-facebook-f"></i></a>
+            <a href="#" class="text-gray-400 hover:text-white"><i class="fab fa-instagram"></i></a>
+            <a href="#" class="text-gray-400 hover:text-white"><i class="fab fa-twitter"></i></a>
+            <a href="#" class="text-gray-400 hover:text-white"><i class="fab fa-pinterest-p"></i></a>
+          </div>
+        </div>
+        <div>
+          <h4 class="font-semibold text-lg mb-4">Quick Links</h4>
+          <ul class="space-y-2">
+            <li><a href="#" class="text-gray-400 hover:text-white">Browse Items</a></li>
+            <li><a href="#" class="text-gray-400 hover:text-white">How It Works</a></li>
+            <li><a href="create-listing.html" class="text-gray-400 hover:text-white">Become a Lender</a></li>
+            <li><a href="#" class="text-gray-400 hover:text-white">Sustainability</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-semibold text-lg mb-4">Categories</h4>
+          <ul class="space-y-2">
+            <li><a href="#" class="text-gray-400 hover:text-white">Casual Wear</a></li>
+            <li><a href="#" class="text-gray-400 hover:text-white">Party Wear</a></li>
+            <li><a href="#" class="text-gray-400 hover:text-white">Wedding Collection</a></li>
+            <li><a href="#" class="text-gray-400 hover:text-white">Formal Wear</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-semibold text-lg mb-4">Support</h4>
+          <ul class="space-y-2">
+            <li><a href="#" class="text-gray-400 hover:text-white">Help Center</a></li>
+            <li><a href="#" class="text-gray-400 hover:text-white">FAQs</a></li>
+            <li><a href="#" class="text-gray-400 hover:text-white">Contact Us</a></li>
+            <li><a href="#" class="text-gray-400 hover:text-white">Trust & Safety</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
+        <p>&copy; 2024 ClosetLoop. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/item-details.js"></script>
+  <script src="js/auth-state.js"></script>
+  <script src="js/notifications.js"></script>
+
+</body>
+</html> 

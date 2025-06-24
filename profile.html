@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Profile - ClosetLoop</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+
+  <!-- Your Firebase config -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/notifications.js"></script>
+
+  <!-- Toast notification library -->
+  <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+</head>
+<body class="bg-gray-50 font-sans">
+  <!-- Top Navigation -->
+  <nav class="bg-white shadow-md fixed w-full top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="flex justify-between h-16">
+        <div class="flex items-center">
+          <a href="index.html" class="text-2xl font-bold text-purple-600">ClosetLoop</a>
+        </div>
+        <div class="hidden md:flex items-center space-x-8">
+          <a href="dashboard.html" class="text-gray-600 hover:text-purple-600">Dashboard</a>
+          <a href="dashboard.html" class="text-gray-600 hover:text-purple-600">My Listings</a>
+          <a href="#" class="text-gray-600 hover:text-purple-600">Requests</a>
+          <a href="notifications.html" title="Notifications" class="relative">
+            <i class="fas fa-bell w-6 h-6 text-gray-600 hover:text-purple-600 transition"></i>
+            <span id="notificationBadge" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
+          </a>
+          <button id="logoutBtn" class="text-gray-600 hover:text-purple-600">Logout</button>
+        </div>
+        <div class="md:hidden flex items-center">
+          <button id="mobileMenuBtn" class="text-gray-600">
+            <i class="fas fa-bars text-xl"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- Mobile Menu -->
+    <div id="mobileMenu" class="hidden md:hidden bg-white border-t">
+      <div class="px-2 pt-2 pb-3 space-y-1">
+        <a href="dashboard.html" class="block px-3 py-2 text-gray-600 hover:bg-purple-50">Dashboard</a>
+        <a href="dashboard.html" class="block px-3 py-2 text-gray-600 hover:bg-purple-50">My Listings</a>
+        <a href="#" class="block px-3 py-2 text-gray-600 hover:bg-purple-50">Requests</a>
+        <button id="mobileLogoutBtn" class="w-full text-left px-3 py-2 text-gray-600 hover:bg-purple-50">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="pt-20 pb-12 px-4">
+    <div class="max-w-7xl mx-auto">
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <!-- Profile Section -->
+        <div class="lg:col-span-3">
+          <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="flex flex-col md:flex-row items-start gap-8">
+              <!-- Profile Picture Section -->
+              <div class="w-full md:w-48 flex flex-col items-center">
+                <div class="relative group">
+                  <img id="userAvatar" src="https://via.placeholder.com/150" alt="Profile Picture" 
+                       class="w-48 h-48 rounded-full object-cover border-4 border-purple-500 shadow-md" />
+                  <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <label for="photoUpload" class="cursor-pointer bg-black bg-opacity-50 rounded-full p-3 text-white">
+                      <i class="fas fa-camera"></i>
+                    </label>
+                    <input type="file" id="photoUpload" accept="image/*" class="hidden" />
+                  </div>
+                </div>
+                <p id="userJoinDate" class="text-sm text-gray-500 mt-3">Member since —</p>
+              </div>
+
+              <!-- Profile Details -->
+              <div class="flex-1">
+                <div class="flex justify-between items-center mb-6">
+                  <h1 class="text-2xl font-bold">Profile Details</h1>
+                  <div class="flex gap-2">
+                    <button id="resetPasswordBtn" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
+                      <i class="fas fa-key mr-2"></i>Reset Password
+                    </button>
+                    <button id="editProfileBtn" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">
+                      <i class="fas fa-edit mr-2"></i>Edit Profile
+                    </button>
+                  </div>
+                </div>
+
+                <form id="profileForm" class="space-y-4">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                      <input type="text" id="nameInput" disabled required
+                             class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                      <input type="email" id="emailDisplay" disabled
+                             class="w-full bg-gray-100 text-gray-600 border border-gray-200 rounded-lg px-4 py-2" />
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                      <input type="tel" id="phoneInput" disabled pattern="[0-9]{10}"
+                             class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                      <input type="text" id="locationInput" disabled required
+                             class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+                    <textarea id="bioInput" rows="3" disabled
+                              class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent"></textarea>
+                  </div>
+                  <div id="formButtons" class="flex gap-4 mt-6 hidden">
+                    <button type="submit" class="flex-1 bg-purple-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-purple-700 transition">
+                      Save Changes
+                    </button>
+                    <button type="button" id="cancelBtn" class="flex-1 bg-gray-200 text-gray-700 font-semibold px-6 py-2 rounded-lg hover:bg-gray-300 transition">
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Enhanced User Items Section with Tabs -->
+                <div class="mt-8 bg-white rounded-xl shadow-lg p-6">
+                  <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold">My Items</h2>
+                    <a href="create-listing.html" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">
+                      <i class="fas fa-plus mr-2"></i>New Listing
+                    </a>
+                  </div>
+                  <div class="flex gap-4 mb-6">
+                    <button id="tabListings" class="item-tab bg-purple-100 text-purple-800 px-4 py-1 rounded-full">Listings</button>
+                    <button id="tabRented" class="item-tab bg-gray-100 text-gray-800 px-4 py-1 rounded-full">Rented</button>
+                    <button id="tabBought" class="item-tab bg-gray-100 text-gray-800 px-4 py-1 rounded-full">Bought</button>
+                  </div>
+                  <div id="itemsContent" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Content dynamically added -->
+                  </div>
+                </div>
+        </div>
+
+        <!-- Requests Section with Tabs -->
+          <div class="lg:col-span-1">
+            <div class="bg-white rounded-xl shadow-lg p-4">
+              <h2 class="text-xl font-bold mb-4">Requests</h2>
+              <div class="mb-4 flex gap-2 justify-center">
+                <button id="showPendingBtn" class="tab-btn px-3 py-1 rounded-full bg-yellow-100 text-yellow-800">Pending</button>
+                <button id="showApprovedBtn" class="tab-btn px-3 py-1 rounded-full bg-gray-100 text-gray-800">Approved</button>
+                <button id="showDeclinedBtn" class="tab-btn px-3 py-1 rounded-full bg-gray-100 text-gray-800">Declined</button>
+              </div>
+              <div id="requestsContainer" class="space-y-4">
+                <!-- Requests dynamically appear here -->
+              </div>
+            </div>
+          </div>
+      </div>
+    </div>
+  </div>
+  <!-- Optional Stats Summary -->
+<div class="hidden">
+  <span id="activeListings"></span>
+  <span id="itemsRented"></span>
+  <span id="itemsSold"></span>
+</div>
+
+<script src="js/chat.js"></script>
+
+
+  <script>
+    // Mobile menu toggle
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const mobileMenu = document.getElementById('mobileMenu');
+    mobileMenuBtn.addEventListener('click', () => {
+      mobileMenu.classList.toggle('hidden');
+    });
+
+    // Profile editing functionality
+    const editProfileBtn = document.getElementById('editProfileBtn');
+    const formButtons = document.getElementById('formButtons');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const profileForm = document.getElementById('profileForm');
+    const inputs = profileForm.querySelectorAll('input:not([type="file"]), textarea');
+
+    editProfileBtn.addEventListener('click', () => {
+      inputs.forEach(input => {
+        if (input.id !== 'emailDisplay') {
+          input.disabled = false;
+        }
+      });
+      formButtons.classList.remove('hidden');
+      editProfileBtn.classList.add('hidden');
+    });
+
+    cancelBtn.addEventListener('click', () => {
+      inputs.forEach(input => input.disabled = true);
+      formButtons.classList.add('hidden');
+      editProfileBtn.classList.remove('hidden');
+      location.reload();
+    });
+
+    // Reset Password functionality
+    document.getElementById('resetPasswordBtn').addEventListener('click', async () => {
+      const user = firebase.auth().currentUser;
+      if (!user) return;
+
+      try {
+        await firebase.auth().sendPasswordResetEmail(user.email);
+        showToast('Password reset email sent! Please check your inbox.', 'success');
+      } catch (error) {
+        console.error('Error sending reset email:', error);
+        showToast('Failed to send reset email. Please try again.', 'error');
+      }
+    });
+
+    // Photo upload handling with validation and compression
+    const photoUpload = document.getElementById('photoUpload');
+    photoUpload.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (!file.type.startsWith('image/')) {
+        showToast('Please upload an image file', 'error');
+        return;
+      }
+
+      // Show loading state
+      document.getElementById('userAvatar').style.opacity = '0.5';
+      showToast('Uploading profile picture...', 'info');
+
+      try {
+        const storageRef = firebase.storage().ref();
+        const user = firebase.auth().currentUser;
+        const photoRef = storageRef.child(`profile-pics/${user.uid}`);
+
+
+        // Upload the file
+        const snapshot = await photoRef.put(file);
+        const photoURL = await snapshot.ref.getDownloadURL();
+        
+        // Update user profile
+        await Promise.all([
+          firebase.auth().currentUser.updateProfile({ photoURL }),
+          firebase.firestore().collection('users').doc(user.uid).update({
+            photoURL: photoURL
+          })
+        ]);
+
+        document.getElementById('userAvatar').src = photoURL;
+        showToast('Profile photo updated successfully!', 'success');
+      } catch (error) {
+        console.error('Error uploading photo:', error);
+        showToast('Failed to upload photo. Please try again.', 'error');
+      } finally {
+        document.getElementById('userAvatar').style.opacity = '1';
+      }
+    });
+
+    // Toast notification function
+    function showToast(message, type = 'success') {
+      Toastify({
+        text: message,
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        backgroundColor: type === 'success' ? "#10B981" : 
+                       type === 'error' ? "#EF4444" :
+                       type === 'info' ? "#3B82F6" : "#6B7280",
+      }).showToast();
+    }
+
+    // Firebase Auth state change handler
+    firebase.auth().onAuthStateChanged(async user => {
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
+
+      try {
+        const userDoc = await firebase.firestore().collection('users').doc(user.uid).get();
+        const data = userDoc.data() || {};
+
+        // Populate user details
+        document.getElementById('userAvatar').src = user.photoURL || data.photoURL || 'https://via.placeholder.com/150';
+        document.getElementById('userJoinDate').textContent = 'Member since ' + new Date(data.createdAt?.toDate()).toLocaleDateString();
+        document.getElementById('nameInput').value = data.fullName || user.displayName || '';
+        document.getElementById('emailDisplay').value = user.email;
+        document.getElementById('phoneInput').value = data.phone || '';
+        document.getElementById('locationInput').value = data.location || '';
+        document.getElementById('bioInput').value = data.bio || '';
+
+        // Load user's listings and requests
+        await Promise.all([
+          loadUserListings(user.uid),
+          loadUserStats(user.uid),
+          loadUserRequests(user.uid)
+        ]);
+      } catch (error) {
+        console.error('Error loading user data:', error);
+        showToast('Failed to load user data', 'error');
+      }
+    });
+
+    // Form submission handler with validation
+    profileForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const user = firebase.auth().currentUser;
+      if (!user) return;
+
+      const nameInput = document.getElementById('nameInput');
+      const phoneInput = document.getElementById('phoneInput');
+      const locationInput = document.getElementById('locationInput');
+
+      // Validate required fields
+      if (!nameInput.value.trim()) {
+        showToast('Please enter your full name', 'error');
+        nameInput.focus();
+        return;
+      }
+
+      if (phoneInput.value && !phoneInput.value.match(/^\d{10}$/)) {
+        showToast('Please enter a valid 10-digit phone number', 'error');
+        phoneInput.focus();
+        return;
+      }
+
+      const updates = {
+        fullName: nameInput.value.trim(),
+        phone: phoneInput.value.trim(),
+        location: locationInput.value.trim(),
+        bio: document.getElementById('bioInput').value.trim(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      try {
+        await Promise.all([
+          firebase.auth().currentUser.updateProfile({ displayName: updates.fullName }),
+          firebase.firestore().collection('users').doc(user.uid).update(updates)
+        ]);
+
+        showToast('Profile updated successfully!');
+        
+        inputs.forEach(input => input.disabled = true);
+        formButtons.classList.add('hidden');
+        editProfileBtn.classList.remove('hidden');
+      } catch (error) {
+        console.error('Error updating profile:', error);
+        showToast('Failed to update profile', 'error');
+      }
+    });
+
+    // Load user's listings with error handling
+    async function loadUserListings(userId) {
+      try {
+        const listingsSnapshot = await firebase.firestore()
+          .collection('listings')
+          .where('userId', '==', userId)
+          .orderBy('createdAt', 'desc')
+          .get();
+
+       const listingsGrid = document.getElementById('itemsContent');
+if (!listingsGrid) {
+  console.warn('Element #itemsContent not found');
+  return;
+}
+listingsGrid.innerHTML = '';
+
+
+        if (listingsSnapshot.empty) {
+          listingsGrid.innerHTML = `
+            <div class="col-span-full text-center py-8 text-gray-500">
+              <i class="fas fa-box-open text-4xl mb-2"></i>
+              <p>You haven't created any listings yet.</p>
+              <a href="create-listing.html" class="text-purple-600 hover:text-purple-700">Create your first listing</a>
+            </div>
+          `;
+          return;
+        }
+
+        listingsSnapshot.forEach(doc => {
+          const listing = doc.data();
+          const listingEl = createListingElement(doc.id, listing);
+          listingsGrid.appendChild(listingEl);
+        });
+      } catch (error) {
+        console.error('Error loading listings:', error);
+        showToast('Failed to load listings', 'error');
+      }
+    }
+
+    // Create listing element with enhanced UI
+    function createListingElement(id, listing) {
+      const div = document.createElement('div');
+      div.className = 'bg-white rounded-lg shadow overflow-hidden group hover:shadow-lg transition-shadow';
+      div.innerHTML = `
+        <a href="item-details.html?id=${id}" class="block">
+          <div class="relative">
+            <img src="${listing.images?.[0] || 'https://via.placeholder.com/300x200'}" 
+                 alt="${listing.title}" 
+                 class="w-full h-48 object-cover" />
+            <div class="absolute top-2 right-2">
+              <span class="px-2 py-1 rounded-full text-sm ${
+                listing.status === 'active' ? 'bg-green-100 text-green-800' :
+                listing.status === 'rented' ? 'bg-blue-100 text-blue-800' :
+                'bg-gray-100 text-gray-800'
+              }">${listing.status}</span>
+            </div>
+          </div>
+          <div class="p-4">
+            <h3 class="font-semibold text-lg mb-2 group-hover:text-purple-600 transition-colors">${listing.title}</h3>
+            <div class="flex justify-between items-center">
+              <span class="text-purple-600 font-bold">$${listing.rentPrice}/day</span>
+              ${listing.salePrice ? `<span class="text-gray-600">$${listing.salePrice} to buy</span>` : ''}
+            </div>
+          </div>
+        </a>
+      `;
+      return div;
+    }
+
+    // Load user stats with error handling
+    async function loadUserStats(userId) {
+      try {
+        const listingsSnapshot = await firebase.firestore()
+          .collection('listings')
+          .where('userId', '==', userId)
+          .get();
+
+        let active = 0, rented = 0, sold = 0;
+
+        listingsSnapshot.forEach(doc => {
+          const listing = doc.data();
+          if (listing.status === 'active') active++;
+          else if (listing.status === 'rented') rented++;
+          else if (listing.status === 'sold') sold++;
+        });
+
+        document.getElementById('activeListings').textContent = active;
+        document.getElementById('itemsRented').textContent = rented;
+        document.getElementById('itemsSold').textContent = sold;
+      } catch (error) {
+        console.error('Error loading stats:', error);
+        showToast('Failed to load activity stats', 'error');
+      }
+    }
+
+    // Load user requests with enhanced UI
+    async function loadUserRequests(userId) {
+      try {
+        console.log('🔍 Loading requests for user:', userId);
+        
+        const [rentalsSnapshot, purchasesSnapshot] = await Promise.all([
+          firebase.firestore().collection('rentals')
+            .where('ownerId', '==', userId)
+            .get(),
+          firebase.firestore().collection('purchases')
+            .where('ownerId', '==', userId)
+            .get()
+        ]);
+
+        console.log('📦 Rental requests found:', rentalsSnapshot.size);
+        console.log('🛒 Purchase requests found:', purchasesSnapshot.size);
+
+        const requestsContainer = document.getElementById('requestsContainer');
+        requestsContainer.innerHTML = '';
+
+        if (rentalsSnapshot.empty && purchasesSnapshot.empty) {
+          console.log('❌ No requests found for user');
+          requestsContainer.innerHTML = `
+            <div class="text-center py-6 text-gray-500">
+              <i class="fas fa-inbox text-3xl mb-2"></i>
+              <p>No requests yet</p>
+            </div>
+          `;
+          return;
+        }
+
+        const requests = [];
+
+        // Process rental requests
+        for (const doc of rentalsSnapshot.docs) {
+          const request = doc.data();
+          console.log('🏠 Processing rental request:', request);
+          
+          try {
+            const [userDoc, itemDoc] = await Promise.all([
+              firebase.firestore().collection('users').doc(request.userId).get(),
+              firebase.firestore().collection('listings').doc(request.itemId).get()
+            ]);
+
+            const user = userDoc.data();
+            const item = itemDoc.data();
+
+            console.log('👤 User data:', user);
+            console.log('📦 Item data:', item);
+
+            requests.push({
+              id: doc.id,
+              type: 'rental',
+              request,
+              user,
+              item
+            });
+          } catch (error) {
+            console.error('❌ Error processing rental request:', error);
+            // Continue with other requests even if one fails
+          }
+        }
+
+        // Process purchase requests
+        for (const doc of purchasesSnapshot.docs) {
+          const request = doc.data();
+          console.log('💰 Processing purchase request:', request);
+          
+          try {
+            const [userDoc, itemDoc] = await Promise.all([
+              firebase.firestore().collection('users').doc(request.userId).get(),
+              firebase.firestore().collection('listings').doc(request.itemId).get()
+            ]);
+
+            const user = userDoc.data();
+            const item = itemDoc.data();
+
+            console.log('👤 User data:', user);
+            console.log('📦 Item data:', item);
+
+            requests.push({
+              id: doc.id,
+              type: 'purchase',
+              request,
+              user,
+              item
+            });
+          } catch (error) {
+            console.error('❌ Error processing purchase request:', error);
+            // Continue with other requests even if one fails
+          }
+        }
+
+        console.log('📋 Total processed requests:', requests.length);
+
+        // Sort requests by timestamp
+        requests.sort((a, b) => {
+          const aTime = a.request.createdAt?.toDate ? a.request.createdAt.toDate() : 
+                       a.request.createdAt ? new Date(a.request.createdAt) : new Date(0);
+          const bTime = b.request.createdAt?.toDate ? b.request.createdAt.toDate() : 
+                       b.request.createdAt ? new Date(b.request.createdAt) : new Date(0);
+          return bTime - aTime;
+        });
+
+        // Filter requests based on status
+        const currentFilter = localStorage.getItem('requestFilter') || 'pending';
+        const filteredRequests = requests.filter(r => r.request.status === currentFilter);
+        console.log('🔥 Current Filter:', currentFilter);
+        console.log('📦 All Request Statuses:', requests.map(r => r.request.status));
+        console.log('✅ Filtered Requests:', filteredRequests);
+
+        // Update filter buttons
+        updateFilterButtons(currentFilter);
+
+        // Display requests
+        if (filteredRequests.length === 0) {
+          requestsContainer.innerHTML = `
+            <div class="text-center py-6 text-gray-500">
+              <p>No ${currentFilter} requests</p>
+            </div>
+          `;
+          return;
+        }
+
+        filteredRequests.forEach(data => {
+          const requestEl = createRequestElement(data.id, data.request, data.user, data.item, data.type);
+          requestsContainer.appendChild(requestEl);
+        });
+      } catch (error) {
+        console.error('❌ Error loading requests:', error);
+        showToast('Failed to load requests', 'error');
+      }
+    }
+
+    // Create request element with enhanced UI
+    function createRequestElement(id, request, user, item, type) {
+      const div = document.createElement('div');
+      div.className = 'bg-white border rounded-lg p-4 space-y-3';
+      
+      const statusColor = request.status === 'approved' ? 'green' :
+                         request.status === 'rejected' ? 'red' : 'yellow';
+
+      div.innerHTML = `
+        <div class="flex items-center gap-3">
+  <a href="user-profile.html?uid=${request.userId}" class="flex items-center gap-3">
+    <img src="${user.photoURL || 'https://via.placeholder.com/40'}"
+         alt="${user.fullName}"
+         class="w-10 h-10 rounded-full object-cover" />
+    <div class="flex-1 min-w-0">
+      <p class="font-medium truncate text-purple-700 hover:underline">
+        ${user.fullName}
+      </p>
+    </div>
+  </a>
+  <p class="text-sm text-gray-500">${request.createdAt?.toDate ? new Date(request.createdAt.toDate()).toLocaleString() : 
+    request.createdAt ? new Date(request.createdAt).toLocaleString() : 'Unknown time'}</p>
+  <span class="px-2 py-1 rounded-full text-xs bg-${statusColor}-100 text-${statusColor}-800">
+    ${request.status || 'pending'}
+  </span>
+</div>
+        <div class="text-sm space-y-2">
+          <div class="flex items-center gap-2">
+            <img src="${item.images?.[0] || 'https://via.placeholder.com/40'}" 
+                 alt="${item.title}"
+                 class="w-12 h-12 rounded object-cover" />
+            <div>
+              <p class="font-medium">${item.title}</p>
+              <p class="text-gray-600">
+                ${type === 'rental' ? 
+                  `${request.startDate?.toDate ? new Date(request.startDate.toDate()).toLocaleDateString() : 
+                    request.startDate ? new Date(request.startDate).toLocaleDateString() : 'Unknown'} - 
+                   ${request.endDate?.toDate ? new Date(request.endDate.toDate()).toLocaleDateString() : 
+                    request.endDate ? new Date(request.endDate).toLocaleDateString() : 'Unknown'}` :
+                  'Purchase Request'}
+              </p>
+            </div>
+          </div>
+          ${request.message ? `
+            <div class="bg-gray-50 rounded p-2 mt-2">
+              <p class="text-gray-600">${request.message}</p>
+            </div>
+          ` : ''}
+        </div>
+        ${request.status === 'pending' ? `
+          <div class="flex gap-2 mt-2">
+            <button onclick="handleRequest('${id}', '${type}', 'approved')"
+                    class="flex-1 bg-green-500 text-white text-sm py-2 px-3 rounded hover:bg-green-600 transition">
+              <i class="fas fa-check mr-1"></i>Approve
+            </button>
+            <button onclick="handleRequest('${id}', '${type}', 'rejected')"
+                    class="flex-1 bg-red-500 text-white text-sm py-2 px-3 rounded hover:bg-red-600 transition">
+              <i class="fas fa-times mr-1"></i>Decline
+            </button>
+          </div>
+        ` : request.status === 'approved' ? `
+          <div class="mt-2">
+            <button onclick="openChat('${id}', '${type}')"
+                    class="w-full bg-purple-600 text-white text-sm py-2 px-3 rounded hover:bg-purple-700 transition">
+              <i class="fas fa-comments mr-1"></i>Open Chat
+            </button>
+          </div>
+        ` : ''}
+      `;
+      return div;
+    }
+
+    // Handle request approval/rejection
+    async function handleRequest(requestId, type, status) {
+  try {
+    const user = firebase.auth().currentUser;
+    if (!user) {
+      showToast('Please sign in first', 'error');
+      return;
+    }
+
+    const collection = type === 'rental' ? 'rentals' : 'purchases';
+    const requestRef = firebase.firestore().collection(collection).doc(requestId);
+    
+    // Verify ownership before proceeding
+    const requestDoc = await requestRef.get();
+    if (!requestDoc.exists) {
+      showToast('Request not found', 'error');
+      return;
+    }
+    
+    const requestData = requestDoc.data();
+    console.log("Request Data before chat creation:", requestData);
+
+    if (user.uid !== requestData.ownerId) {
+      showToast('You do not own this request', 'error');
+      return;
+    }
+
+    // Perform the update
+    await requestRef.update({
+      status: status,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    if (status === 'approved') {
+      // Update item status
+      const itemRef = firebase.firestore().collection('listings').doc(requestData.itemId);
+      await itemRef.update({
+        status: type === 'rental' ? 'rented' : 'sold'
+      });
+
+      // Get item title
+      const itemDoc = await itemRef.get();
+      const itemTitle = itemDoc.data().title || "your item";
+
+      // Create notification using the new system
+      if (window.NotificationHelpers) {
+        try {
+          await window.NotificationHelpers.createRequestStatusNotification(
+            requestData.userId,
+            'approved',
+            itemTitle,
+            type
+          );
+          console.log('✅ Request approval notification created successfully');
+        } catch (notificationError) {
+          console.warn('⚠️ Failed to create request approval notification:', notificationError);
+          // Don't fail the request approval if notification fails
+        }
+      } else {
+        console.warn('⚠️ NotificationHelpers not available for request approval');
+        // Fallback to old notification system
+        const notificationRef = firebase.firestore().collection('notifications').doc();
+        await notificationRef.set({
+          userId: requestData.userId,
+          title: 'Request Approved',
+          message: `Your ${type} request for "${itemTitle}" was approved!`,
+          read: false,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+
+       // Create chat room with retry logic
+      let retryCount = 0;
+      const MAX_RETRIES = 2;
+      
+      while (retryCount < MAX_RETRIES) {
+        try {
+          console.log("Attempting to create chat with:", {
+            requestId,
+            type,
+            requestUserId: requestData.userId,
+            requestOwnerId: requestData.ownerId
+          });
+          const chat = new ClosetLoopChat();
+          const chatId = await chat.getChatRoom(requestId, type);
+          await chat.sendSystemMessage(chatId, "🎉 Request approved! You can now discuss details.");
+          break;
+        } catch (chatError) {
+          retryCount++;
+          console.warn(`Chat creation attempt ${retryCount} failed:`, chatError);
+          
+          if (retryCount === MAX_RETRIES) {
+            showToast('Request approved, but chat creation failed. Please contact support.', 'warning');
+          } else {
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+      }
+    } else if (status === 'rejected') {
+      // Create rejection notification
+      const itemRef = firebase.firestore().collection('listings').doc(requestData.itemId);
+      const itemDoc = await itemRef.get();
+      const itemTitle = itemDoc.data().title || "your item";
+
+      if (window.NotificationHelpers) {
+        try {
+          await window.NotificationHelpers.createRequestStatusNotification(
+            requestData.userId,
+            'rejected',
+            itemTitle,
+            type
+          );
+          console.log('✅ Request rejection notification created successfully');
+        } catch (notificationError) {
+          console.warn('⚠️ Failed to create request rejection notification:', notificationError);
+          // Don't fail the request rejection if notification fails
+        }
+      } else {
+        console.warn('⚠️ NotificationHelpers not available for request rejection');
+        // Fallback to old notification system
+        const notificationRef = firebase.firestore().collection('notifications').doc();
+        await notificationRef.set({
+          userId: requestData.userId,
+          title: 'Request Update',
+          message: `Your ${type} request for "${itemTitle}" was rejected.`,
+          read: false,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    }
+
+    showToast(`Request ${status} successfully!`, 'success');
+    
+    // Refresh requests with delay to allow Firestore propagation
+    setTimeout(() => {
+      loadUserRequests(user.uid);
+    }, 1500);
+  } catch (error) {
+    console.error('Full error details:', error);
+    
+    let errorMessage = 'Action failed';
+    if (error.code === 'permission-denied') {
+      errorMessage = 'Permission denied. Please refresh and try again.';
+    } else if (error.message.includes('insufficient permissions')) {
+      errorMessage = 'Insufficient permissions. Try logging out and back in.';
+    }
+    
+    showToast(`${errorMessage}: ${error.message}`, 'error');
+  }
+}
+
+    // Open chat for an approved request
+    function openChat(requestId, type) {
+      console.log("Opening chat for request:", requestId, type);
+      window.location.href = `chat.html?requestId=${requestId}&requestType=${type}`;
+    }
+
+    // Update filter buttons
+    function updateFilterButtons(activeFilter) {
+      const buttons = {
+        pending: document.getElementById('showPendingBtn'),
+        approved: document.getElementById('showApprovedBtn'),
+        rejected: document.getElementById('showDeclinedBtn')
+      };
+
+      Object.entries(buttons).forEach(([filter, button]) => {
+        if (filter === activeFilter) {
+          button.classList.remove('bg-gray-100', 'text-gray-800');
+         if (filter === 'pending') {
+  button.classList.add('bg-yellow-100', 'text-yellow-800');
+} else if (filter === 'approved') {
+  button.classList.add('bg-green-100', 'text-green-800');
+} else {
+  button.classList.add('bg-red-100', 'text-red-800');
+}
+
+        } else {
+          button.classList.remove('bg-yellow-100', 'text-yellow-800', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800');
+          button.classList.add('bg-gray-100', 'text-gray-800');
+        }
+      });
+    }
+
+    // Add filter button event listeners
+    document.getElementById('showPendingBtn').addEventListener('click', () => {
+      localStorage.setItem('requestFilter', 'pending');
+      const user = firebase.auth().currentUser;
+      if (user) loadUserRequests(user.uid);
+    });
+
+    document.getElementById('showApprovedBtn').addEventListener('click', () => {
+      localStorage.setItem('requestFilter', 'approved');
+      const user = firebase.auth().currentUser;
+      if (user) loadUserRequests(user.uid);
+    });
+
+    document.getElementById('showDeclinedBtn').addEventListener('click', () => {
+      localStorage.setItem('requestFilter', 'rejected');
+      const user = firebase.auth().currentUser;
+      if (user) loadUserRequests(user.uid);
+    });
+
+    // Logout functionality
+    function handleLogout() {
+      firebase.auth().signOut()
+        .then(() => window.location.href = 'login.html')
+        .catch(error => showToast('Failed to logout', 'error'));
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+    document.getElementById('mobileLogoutBtn').addEventListener('click', handleLogout);
+
+    // Listing Tab Logic
+const tabButtons = {
+  tabListings: 'listings',
+  tabRented: 'rented',
+  tabBought: 'bought'
+};
+
+Object.keys(tabButtons).forEach(tabId => {
+  document.getElementById(tabId).addEventListener('click', () => {
+    localStorage.setItem('listingTab', tabButtons[tabId]);
+    updateListingTab(tabButtons[tabId]);
+  });
+});
+
+function updateListingTab(activeTab) {
+  const itemsContent = document.getElementById('itemsContent');
+  const tabs = ['listings', 'rented', 'bought'];
+
+  tabs.forEach(tab => {
+    const btn = document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1));
+    if (tab === activeTab) {
+      btn.classList.add('bg-purple-100', 'text-purple-800');
+      btn.classList.remove('bg-gray-100', 'text-gray-800');
+    } else {
+      btn.classList.remove('bg-purple-100', 'text-purple-800');
+      btn.classList.add('bg-gray-100', 'text-gray-800');
+    }
+  });
+
+  loadFilteredListings(activeTab);
+}
+
+// Load filtered listings
+async function loadFilteredListings(type) {
+  const user = firebase.auth().currentUser;
+  const userId = user?.uid;
+  const itemsContent = document.getElementById('itemsContent');
+  itemsContent.innerHTML = '';
+
+  if (!userId) return;
+
+  const query = firebase.firestore().collection('listings');
+  const snapshot = await query.where('userId', '==', userId).get();
+
+  snapshot.forEach(doc => {
+    const data = doc.data();
+    const id = doc.id;
+
+    const match =
+      (type === 'listings' && data.status === 'active') ||
+      (type === 'rented' && data.status === 'rented') ||
+      (type === 'bought' && data.status === 'sold');
+
+    if (match) {
+      itemsContent.appendChild(createListingElement(id, data));
+    }
+  });
+
+  if (itemsContent.innerHTML === '') {
+    itemsContent.innerHTML = `
+      <div class="col-span-full text-center py-8 text-gray-500">
+        <i class="fas fa-box text-3xl mb-2"></i>
+        <p>No ${type} items found.</p>
+      </div>
+    `;
+  }
+}
+
+// Load correct tab on page load
+firebase.auth().onAuthStateChanged(user => {
+  if (user) {
+    const defaultTab = localStorage.getItem('listingTab') || 'listings';
+    updateListingTab(defaultTab);
+  }
+});
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Profile - ClosetLoop</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/auth-state.js"></script>
+
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+    }
+    .dropdown-menu {
+      opacity: 0;
+      transform: translateY(-10px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      pointer-events: none;
+    }
+    .group:hover .dropdown-menu {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+    .group:hover .dropdown-arrow {
+      transform: rotate(180deg);
+    }
+    .dropdown-arrow {
+      transition: transform 0.2s ease;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 font-sans">
+  <!-- Navigation -->
+  <nav class="bg-white shadow-md py-4 px-6 fixed w-full z-50">
+      <div class="max-w-7xl mx-auto flex justify-between items-center">
+        <a href="index.html" class="text-2xl font-bold">ClosetLoop</a>
+        
+        <div class="hidden md:flex flex-1 justify-center">
+          <input type="text" placeholder="Search clothes, shoes, accessories..." class="w-96 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500">
+        </div>
+
+        <div class="flex gap-4 items-center">
+          <div class="hidden md:flex gap-6 items-center">
+            <a href="index.html#browse" class="hover:text-gray-600 transition">Browse</a>
+            <a href="index.html#how-it-works" class="hover:text-gray-600 transition">How it Works</a>
+          </div>
+          
+          <a href="notifications.html" title="Notifications" class="relative p-2 hover:bg-gray-100 rounded-full transition">
+            <i class="fas fa-bell text-lg text-gray-600 hover:text-purple-600 transition"></i>
+            <span id="notificationBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
+          </a>
+          
+          <div class="guest-menu flex gap-4 items-center">
+            <a href="login.html" class="login-btn hover:text-gray-600 transition">Log In</a>
+            <a href="signup.html" class="signup-btn bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">Sign Up</a>
+          </div>
+          
+          <div class="user-menu hidden items-center gap-3">
+            <a href="chat.html" title="Messages" class="p-2 hover:bg-gray-100 rounded-full transition">
+              <i class="fas fa-comment text-lg text-gray-600 hover:text-purple-600 transition"></i>
+            </a>
+
+            <div class="relative group">
+              <button class="flex items-center gap-2 p-2 rounded-full hover:bg-gray-100 transition">
+                <img id="userAvatar" src="assets/default-avatar.png" alt="Profile" class="user-avatar w-8 h-8 rounded-full object-cover border border-gray-300">
+                <svg class="w-4 h-4 dropdown-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl py-2 dropdown-menu z-50">
+                <a href="dashboard.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition">📊 My Dashboard</a>
+                <a href="my-orders.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition">📦 My Orders / Rentals</a>
+                <a href="wishlist.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition">❤️ My Wishlist</a>
+                <a href="profile.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition">⚙️ Profile Settings</a>
+                <a href="#" class="block px-4 py-2 text-sm text-red-500 hover:bg-red-100 transition" onclick="signOut()">🚪 Logout</a>
+              </div>
+            </div>
+          </div>
+
+          <button id="mobileMenuBtn" class="md:hidden p-2 hover:bg-gray-100 rounded-lg transition">
+            <i class="fas fa-bars text-lg text-gray-600"></i>
+          </button>
+        </div>
+      </div>
+
+      <div id="mobileMenu" class="md:hidden hidden bg-white border-t border-gray-200 mt-4 py-4">
+        <div class="flex flex-col space-y-4 px-6">
+          <a href="index.html#browse" class="hover:text-gray-600 transition py-2">Browse</a>
+          <a href="index.html#how-it-works" class="hover:text-gray-600 transition py-2">How it Works</a>
+          <div class="border-t border-gray-200 pt-4">
+            <div class="guest-menu-mobile">
+              <a href="login.html" class="block py-2 hover:text-gray-600 transition">Log In</a>
+              <a href="signup.html" class="block py-2 hover:text-gray-600 transition">Sign Up</a>
+            </div>
+            <div class="user-menu-mobile hidden">
+              <a href="dashboard.html" class="block py-2 hover:text-gray-600 transition">📊 My Dashboard</a>
+              <a href="chat.html" class="block py-2 hover:text-gray-600 transition">💬 Messages</a>
+              <a href="wishlist.html" class="block py-2 hover:text-gray-600 transition">❤️ My Wishlist</a>
+              <a href="profile.html" class="block py-2 hover:text-gray-600 transition">⚙️ Profile Settings</a>
+              <a href="#" class="block py-2 text-red-500 hover:text-red-600 transition" onclick="signOut()">🚪 Logout</a>
+            </div>
+          </div>
+        </div>
+      </div>
+  </nav>
+
+  <div class="max-w-6xl mx-auto py-10 px-4 pt-28">
+    <h1 class="text-3xl font-bold mb-6 text-center">User Profile</h1>
+
+    <!-- User Info -->
+    <div class="bg-white shadow rounded-lg p-6 flex flex-col sm:flex-row items-start gap-6 mb-10">
+      <img id="profileAvatar" src="assets/default-avatar.png" alt="Avatar" class="w-28 h-28 rounded-full object-cover border">
+      <div class="flex-1">
+        <p id="profileName" class="text-2xl font-bold mb-1">Loading...</p>
+        <p id="profileJoinDate" class="text-sm text-gray-500 mb-2"></p>
+        <p id="profileLocation" class="text-sm text-gray-600 mb-2"></p>
+        <p id="profileBio" class="text-sm text-gray-700 mb-2"></p>
+       
+      </div>
+    </div>
+
+    <!-- Tabs for Activity -->
+    <div class="mb-6">
+      <div class="flex gap-4 mb-4">
+        <button onclick="showTab('listings')" class="tab-btn bg-purple-100 text-purple-800 px-4 py-2 rounded-full">Listings</button>
+        <button onclick="showTab('rented')" class="tab-btn bg-gray-100 text-gray-800 px-4 py-2 rounded-full">Rented</button>
+        <button onclick="showTab('bought')" class="tab-btn bg-gray-100 text-gray-800 px-4 py-2 rounded-full">Bought</button>
+      </div>
+
+      <!-- Listings Section -->
+      <div id="tab-listings" class="tab-section">
+        <h2 class="text-xl font-semibold mb-4">Items Listed</h2>
+        <div id="userListings" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+      </div>
+
+      <!-- Rented Section -->
+      <div id="tab-rented" class="tab-section hidden">
+        <h2 class="text-xl font-semibold mb-4">Items Rented</h2>
+        <div id="rentedItems" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+      </div>
+
+      <!-- Bought Section -->
+      <div id="tab-bought" class="tab-section hidden">
+        <h2 class="text-xl font-semibold mb-4">Items Bought</h2>
+        <div id="boughtItems" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase Scripts -->
+  <script>
+    // Mobile menu functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+      const mobileMenu = document.getElementById('mobileMenu');
+      
+      if (mobileMenuBtn && mobileMenu) {
+        mobileMenuBtn.addEventListener('click', function() {
+          mobileMenu.classList.toggle('hidden');
+          const icon = mobileMenuBtn.querySelector('i');
+          if (mobileMenu.classList.contains('hidden')) {
+            icon.className = 'fas fa-bars text-lg text-gray-600';
+          } else {
+            icon.className = 'fas fa-times text-lg text-gray-600';
+          }
+        });
+      }
+    });
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const userUid = urlParams.get('uid');
+
+    const profileAvatar = document.getElementById('profileAvatar');
+    const profileName = document.getElementById('profileName');
+    const profileJoinDate = document.getElementById('profileJoinDate');
+    const profileLocation = document.getElementById('profileLocation');
+    const profileBio = document.getElementById('profileBio');
+    const profileEmail = document.getElementById('profileEmail');
+    const profilePhone = document.getElementById('profilePhone');
+
+    const userListings = document.getElementById('userListings');
+    const rentedItems = document.getElementById('rentedItems');
+    const boughtItems = document.getElementById('boughtItems');
+
+    async function loadUserProfile() {
+      if (!userUid) {
+        alert("No user ID provided.");
+        return;
+      }
+
+      try {
+        const userDoc = await firebase.firestore().collection('users').doc(userUid).get();
+
+        if (!userDoc.exists) {
+          profileName.textContent = "User not found.";
+          return;
+        }
+
+        const userData = userDoc.data();
+
+        profileAvatar.src = userData.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.fullName || 'Unnamed User')}&background=8b5cf6&color=fff`;
+        profileName.textContent = userData.fullName || userData.FullName || 'Unnamed User';
+        profileJoinDate.textContent = userData.createdAt ? `Member since ${new Date(userData.createdAt.toDate()).toLocaleDateString()}` : '';
+        profileLocation.textContent = userData.location ? `📍 ${userData.location}` : '';
+        profileBio.textContent = userData.bio || '';
+       
+
+        // Load listings
+        const listingsSnapshot = await firebase.firestore().collection('listings')
+          .where('userId', '==', userUid).get();
+
+        listingsSnapshot.forEach(doc => {
+          const item = doc.data();
+          const card = document.createElement('div');
+          card.className = "bg-white p-4 rounded shadow";
+
+          let statusLabel = '';
+          if (item.status === 'rented' && item.rentEndDate) {
+            statusLabel = `<p class='text-sm text-yellow-600 mt-2'>Currently rented until ${new Date(item.rentEndDate.toDate()).toLocaleDateString()}</p>`;
+          } else if (item.status === 'sold') {
+            statusLabel = `<p class='text-sm text-red-600 mt-2'>Already sold</p>`;
+          }
+
+          card.innerHTML = `
+            <img src="${item.images?.[0] || 'https://via.placeholder.com/300x200'}" class="w-full h-40 object-cover rounded mb-2">
+            <h3 class="text-lg font-semibold">${item.title}</h3>
+            <p class="text-sm text-gray-600">${item.category}</p>
+            ${statusLabel}
+          `;
+          userListings.appendChild(card);
+        });
+
+        // Load rentals by user
+        const rentalsSnapshot = await firebase.firestore().collection('rentals')
+          .where('renterId', '==', userUid).get();
+
+        rentalsSnapshot.forEach(doc => {
+          const rental = doc.data();
+          const item = rental.item;
+          const card = document.createElement('div');
+          card.className = "bg-white p-4 rounded shadow";
+          card.innerHTML = `
+            <img src="${item.images?.[0] || 'https://via.placeholder.com/300x200'}" class="w-full h-40 object-cover rounded mb-2">
+            <h3 class="text-lg font-semibold">${item.title}</h3>
+            <p class="text-sm text-gray-600">${item.category}</p>
+            <p class='text-sm text-purple-600 mt-2'>Rented from ${new Date(rental.startDate.toDate()).toLocaleDateString()} to ${new Date(rental.endDate.toDate()).toLocaleDateString()}</p>
+          `;
+          rentedItems.appendChild(card);
+        });
+
+        // Load purchases by user
+        const purchasesSnapshot = await firebase.firestore().collection('purchases')
+          .where('buyerId', '==', userUid).get();
+
+        purchasesSnapshot.forEach(doc => {
+          const purchase = doc.data();
+          const item = purchase.item;
+          const card = document.createElement('div');
+          card.className = "bg-white p-4 rounded shadow";
+          card.innerHTML = `
+            <img src="${item.images?.[0] || 'https://via.placeholder.com/300x200'}" class="w-full h-40 object-cover rounded mb-2">
+            <h3 class="text-lg font-semibold">${item.title}</h3>
+            <p class="text-sm text-gray-600">${item.category}</p>
+            <p class='text-sm text-green-600 mt-2'>Bought permanently</p>
+          `;
+          boughtItems.appendChild(card);
+        });
+
+      } catch (error) {
+        console.error("Error loading user profile:", error);
+        alert("Failed to load user profile.");
+      }
+    }
+
+    function showTab(tabId) {
+      document.querySelectorAll('.tab-section').forEach(section => {
+        section.classList.add('hidden');
+      });
+      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-purple-100', 'text-purple-800');
+        btn.classList.add('bg-gray-100', 'text-gray-800');
+      });
+      event.target.classList.add('bg-purple-100', 'text-purple-800');
+    }
+
+    loadUserProfile();
+  </script>
+</body>
+</html>

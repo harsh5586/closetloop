@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Wishlist - ClosetLoop</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <style>
+        :root {
+            --primary: #8b5cf6;
+            --primary-light: #a78bfa;
+            --primary-dark: #7c3aed;
+        }
+        body { font-family: 'Poppins', sans-serif; background-color: #f9fafb; }
+        .wishlist-header { background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); }
+        .wishlist-item { transition: all 0.3s ease; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .wishlist-item:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .remove-btn { transition: all 0.2s ease; }
+        .remove-btn:hover { transform: scale(1.1); color: #ef4444; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 500; }
+        .status-available { background-color: #ecfdf5; color: #059669; }
+        .status-rented { background-color: #fffbeb; color: #d97706; }
+        .status-reserved { background-color: #eff6ff; color: #3b82f6; }
+        .action-btn { transition: all 0.3s ease; }
+        .action-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3); }
+        .empty-state { background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); }
+        .filter-btn { transition: all 0.2s ease; }
+        .filter-btn:hover, .filter-btn.active { background-color: var(--primary); color: white; }
+        .suggested-item { transition: all 0.3s ease; border-radius: 12px; }
+        .suggested-item:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.08); }
+        .heart-animate { animation: heartBeat 0.6s ease; }
+        @keyframes heartBeat { 0% { transform: scale(1); } 25% { transform: scale(1.2); } 50% { transform: scale(0.9); } 75% { transform: scale(1.1); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body class="text-gray-800 bg-gray-50">
+    <!-- Navigation (copy from index.html for consistency) -->
+    <nav class="bg-white shadow-md py-4 px-6 fixed w-full z-50">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <a href="index.html" class="text-2xl font-bold">ClosetLoop</a>
+            <div class="flex gap-6 items-center">
+                <a href="index.html#browse" class="hover:text-gray-600 transition">Browse</a>
+                <a href="index.html#how-it-works" class="hover:text-gray-600 transition">How it Works</a>
+                <a href="notifications.html" title="Notifications" class="relative">
+                    <i class="fas fa-bell w-6 h-6 text-gray-600 hover:text-purple-600 transition"></i>
+                    <span id="notificationBadge" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
+                </a>
+                <a href="wishlist.html" class="relative">
+                    <i class="fas fa-heart w-6 h-6 text-red-500 transition"></i>
+                    <span id="wishlistCount" class="absolute -top-2 -right-2 bg-purple-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">0</span>
+                </a>
+                <div class="user-menu flex items-center gap-4">
+                    <a href="chat.html" title="Messages">
+                        <i class="fas fa-comment w-6 h-6 text-gray-600 hover:text-purple-600"></i>
+                    </a>
+                    <div class="relative group">
+                        <button class="flex items-center gap-2 p-2 rounded-full hover:bg-gray-100 transition">
+                            <img src="assets/default-avatar.jpg" alt="Profile" class="user-avatar w-8 h-8 rounded-full object-cover border border-gray-300">
+                            <span class="font-medium hidden md:inline">Profile</span>
+                            <svg class="w-4 h-4 dropdown-arrow hidden md:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <!-- Wishlist Header -->
+    <header class="wishlist-header pt-32 pb-16 px-6">
+        <div class="max-w-7xl mx-auto text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">My Fashion Wishlist</h1>
+            <p class="text-xl text-gray-700 max-w-2xl mx-auto">
+                All your favorite styles in one place. Save items you love for later and get notified when they become available.
+            </p>
+            <div class="flex flex-wrap justify-center gap-3 mt-8">
+                <button class="filter-btn bg-white px-5 py-2 rounded-full text-sm font-medium" data-filter="all">All Items</button>
+                <button class="filter-btn bg-white px-5 py-2 rounded-full text-sm font-medium" data-filter="available">Available Now</button>
+                <button class="filter-btn bg-white px-5 py-2 rounded-full text-sm font-medium" data-filter="casual">Casual Wear</button>
+                <button class="filter-btn bg-white px-5 py-2 rounded-full text-sm font-medium" data-filter="formal">Formal Wear</button>
+                <button class="filter-btn bg-white px-5 py-2 rounded-full text-sm font-medium" data-filter="shoes">Shoes</button>
+                <button class="filter-btn bg-white px-5 py-2 rounded-full text-sm font-medium" data-filter="accessories">Accessories</button>
+            </div>
+        </div>
+    </header>
+    <!-- Wishlist Content -->
+    <main class="py-12 px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-2xl font-bold" id="wishlistTitle">Saved Items</h2>
+                <div class="flex items-center gap-4">
+                    <div class="relative">
+                        <select id="sortSelect" class="bg-white border border-gray-300 rounded-xl pl-4 pr-10 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                            <option value="recent">Sort by: Recently Added</option>
+                            <option value="low">Sort by: Price Low to High</option>
+                            <option value="high">Sort by: Price High to Low</option>
+                            <option value="available">Sort by: Availability</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Wishlist Items Grid -->
+            <div id="wishlistGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"></div>
+            <!-- Empty State -->
+            <div id="emptyState" class="empty-state hidden rounded-2xl p-12 text-center my-12">
+                <div class="max-w-md mx-auto">
+                    <div class="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-heart text-red-500 text-4xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold mb-4">Your Wishlist is Empty</h2>
+                    <p class="text-gray-600 mb-8">
+                        Start saving your favorite fashion items! Click the heart icon on any item to add it to your wishlist.
+                    </p>
+                    <a href="index.html#browse" class="inline-block bg-purple-600 text-white px-8 py-3 rounded-full font-medium hover:bg-purple-700 transition">
+                        Browse Fashion Items
+                    </a>
+                </div>
+            </div>
+            <!-- Suggested Items -->
+            <div class="mt-20">
+                <h2 class="text-2xl font-bold mb-6">You Might Also Like</h2>
+                <div id="suggestedGrid" class="grid grid-cols-2 md:grid-cols-4 gap-6"></div>
+            </div>
+        </div>
+    </main>
+    <!-- Footer (copy from index.html for consistency) -->
+    <footer class="bg-gray-900 text-white py-12 px-6 mt-20">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+                <h3 class="text-2xl font-bold mb-4">ClosetLoop</h3>
+                <p class="text-gray-400">Redefining fashion sharing and sustainability.</p>
+            </div>
+            <div>
+                <h4 class="font-semibold mb-4">Quick Links</h4>
+                <ul class="space-y-2 text-gray-400">
+                    <li><a href="#" class="hover:text-white transition">About Us</a></li>
+                    <li><a href="#" class="hover:text-white transition">How It Works</a></li>
+                    <li><a href="#" class="hover:text-white transition">FAQs</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-semibold mb-4">Categories</h4>
+                <ul class="space-y-2 text-gray-400">
+                    <li><a href="#" class="hover:text-white transition">Casual Wear</a></li>
+                    <li><a href="#" class="hover:text-white transition">Party Wear</a></li>
+                    <li><a href="#" class="hover:text-white transition">Wedding Dresses</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-semibold mb-4">Contact</h4>
+                <ul class="space-y-2 text-gray-400">
+                    <li>support@closetloop.com</li>
+                    <li>+1 (555) 123-4567</li>
+                </ul>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
+            <p>&copy; 2024 ClosetLoop. All rights reserved.</p>
+        </div>
+    </footer>
+    <script src="js/auth-state.js"></script>
+    <script src="js/wishlist.js"></script>
+</body>
+</html> 
